@@ -391,6 +391,7 @@ class Connext {
     }
     // verify channel does not exist between ingrid and sender
     let channel = await this.getChannelByPartyA(sender)
+    console.log('channel:', channel)
     if (channel != null && CHANNEL_STATES[channel.status] === CHANNEL_STATES.JOINED) {
       throw new ChannelOpenError(
         methodName,
