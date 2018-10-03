@@ -8,10 +8,10 @@ const Connext = require('../src/Connext')
 
 // Channel enums
 const CHANNEL_STATES = {
-  CHANNEL_OPENING: 0,
-  CHANNEL_OPENED: 1,
-  CHANNEL_SETTLING: 2,
-  CHANNEL_SETTLED: 3
+  OPENED: 0,
+  JOINED: 1,
+  SETTLING: 2,
+  SETTLED: 3
 }
 
 // thread enums
@@ -66,19 +66,18 @@ describe('Connext happy case testing on testnet hub', () => {
   })
 
   describe('openChannel', () => {
-    const initialDeposit = {
+    const initialDeposits = {
       weiDeposit: Web3.utils.toBN(Web3.utils.toWei('6', 'ether'))
     }
 
     const challenge = 3600
 
     it('should open a channel between partyA and the hub', async () => {
-      subchanAI = await client.openChannel(
-        initialDeposit,
+      subchanAI = await client.openChannel({
+        initialDeposits,
         challenge,
-        null,
-        partyA
-      )
+        sender: partyA
+      })
       // ensure lc is in the database
       await interval(async (iterationNumber, stop) => {
         chanA = await client.getChannelById(subchanAI)
@@ -87,26 +86,12 @@ describe('Connext happy case testing on testnet hub', () => {
         }
       }, 2000)
       expect(chanA.channelId).to.be.equal(subchanAI)
-      expect(chanA.state).to.be.equal(CHANNEL_STATES.CHANNEL_OPENING)
-    }).timeout(45000)
-
-    it('should wait for the hub to autojoin the channel', async () => {
-      // ensure channel is in the database
-      await interval(async (iterationNumber, stop) => {
-        chanA = await client.getChannelById(subchanAI)
-        if (chanA.state != CHANNEL_STATES.CHANNEL_OPENING) {
-          stop()
-        }
-      }, 2000)
       expect(chanA.state).to.be.equal(CHANNEL_STATES.CHANNEL_OPENED)
     }).timeout(45000)
 
     it('partyA should have initialDeposit in channel', async () => {
-      const initialDeposit = {
-        weiDeposit: Web3.utils.toBN(Web3.utils.toWei('6', 'ether'))
-      }
       const weiBalanceA = Web3.utils.toBN(chanA.weiBalanceA)
-      expect(weiBalanceA.eq(initialDeposit.weiDeposit)).to.equal(true)
+      expect(weiBalanceA.eq(initialDeposits.weiDeposit)).to.equal(true)
     })
 
     it('hub should have 0 balance in channel', async () => {
@@ -115,15 +100,14 @@ describe('Connext happy case testing on testnet hub', () => {
     })
 
     it('should open a channel between partyB and the hub', async () => {
-      const initialDeposit = {
+      const initialDeposits = {
         weiDeposit: Web3.utils.toBN(Web3.utils.toWei('0', 'ether'))
       }
-      subchanBI = await client.openChannel(
-        initialDeposit,
+      subchanBI = await client.openChannel({
+        initialDeposits,
         challenge,
-        null,
-        partyB
-      )
+        sender: partyB
+      })
       // ensure lc is in the database
       await interval(async (iterationNumber, stop) => {
         chanB = await client.getChannelById(subchanBI)
@@ -132,19 +116,8 @@ describe('Connext happy case testing on testnet hub', () => {
         }
       }, 2000)
       expect(chanB.channelId).to.be.equal(subchanBI)
-      expect(chanB.state).to.be.equal(CHANNEL_STATES.CHANNEL_OPENING)
-    })
-
-    it('should wait for the hub to autojoin the channel', async () => {
-      // ensure channel is in the database
-      await interval(async (iterationNumber, stop) => {
-        chanB = await client.getChannelById(subchanAI)
-        if (chanB.state != CHANNEL_STATES.CHANNEL_OPENING) {
-          stop()
-        }
-      }, 2000)
       expect(chanB.state).to.be.equal(CHANNEL_STATES.CHANNEL_OPENED)
-    })
+    }).timeout(45000)
 
     it('partyB should have 0 in channel', async () => {
       const weiBalanceA = Web3.utils.toBN(chanB.weiBalanceA)
@@ -155,6 +128,77 @@ describe('Connext happy case testing on testnet hub', () => {
       const weiBalanceI = Web3.utils.toBN(chanB.weiBalanceI)
       expect(weiBalanceI.eq(Web3.utils.toBN('0'))).to.equal(true)
     })
+  })
+
+  describe('requestJoinChannel', () => {
+    subchanAI =
+      subchanAI ||
+      '0x2337e40a02c27c5dc52746de58b747acf0e7d2ae08264ffdc6ad68fee0e6591f'
+
+    subchanBI =
+      subchanBI ||
+      '0xd0cebfc14f7a6846a2ab504c771fb86e56025980c8a45fa6726d0698beb3d3a3'
+
+    let hubDeposit
+    it('should request that the hub join channel A', async () => {
+      hubDeposit = {
+        weiDeposit: Web3.utils.toBN('0'),
+        tokenDeposit: Web3.utils.toBN('0')
+      }
+      const response = await client.requestJoinChannel({
+        hubDeposit,
+        channelId: subchanAI
+      })
+      expect(response).to.exist
+    })
+
+    it('should wait for the hub to join channel A', async () => {
+      // ensure channel is in the database
+      await interval(async (iterationNumber, stop) => {
+        chanA = await client.getChannelById(subchanAI)
+        if (
+          chanA.status !== Object.keys(CHANNEL_STATES)[CHANNEL_STATES.OPENED]
+        ) {
+          stop()
+        }
+      }, 2000)
+      expect(chanA.status).to.be.equal(
+        Object.keys(CHANNEL_STATES)[CHANNEL_STATES.JOINED]
+      )
+      expect(
+        Web3.utils.toBN(chanA.weiBalanceI).eq(hubDeposit.weiDeposit)
+      ).to.equal(true)
+    }).timeout(6000)
+
+    it('should request that the hub join channel B', async () => {
+      hubDeposit = {
+        weiDeposit: Web3.utils.toBN(Web3.utils.toWei('5', 'ether')),
+        tokenDeposit: Web3.utils.toBN('0')
+      }
+      const response = await client.requestJoinChannel({
+        hubDeposit,
+        channelId: subchanBI
+      })
+      expect(response).to.exist
+    })
+
+    it('should wait for the hub to join channel B', async () => {
+      // ensure channel is in the database
+      await interval(async (iterationNumber, stop) => {
+        chanB = await client.getChannelById(subchanBI)
+        if (
+          chanB.status !== Object.keys(CHANNEL_STATES)[CHANNEL_STATES.OPENED]
+        ) {
+          stop()
+        }
+      }, 2000)
+      expect(chanB.status).to.be.equal(
+        Object.keys(CHANNEL_STATES)[CHANNEL_STATES.JOINED]
+      )
+      expect(
+        Web3.utils.toBN(chanB.weiBalanceI).eq(hubDeposit.weiDeposit)
+      ).to.equal(true)
+    }).timeout(6000)
   })
 
   describe.skip('updateChannel', () => {
