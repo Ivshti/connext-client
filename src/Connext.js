@@ -819,62 +819,16 @@ class Connext {
     return result
   }
 
-  /**
-   * Send multiple balance updates simultaneously from a single account.
-   * 
-   * @param {Object[]} payments - payments object
-   * @param {String} sender - (optional) defaults to accounts[0]
-   */
-  async updateBalances (payments, sender = null) {
-    const methodName = 'updateBalances'
-    const isAddress = { presence: true, isAddress: true }
-    const isArray = { presence: true, isArray: true }
-    Connext.validatorsResponseToError(validate.single(payments, isArray), methodName, 'payments')
-    if (!sender) {
-      const accounts = await this.web3.eth.getAccounts()
-      sender = accounts[0]
-    }
-    Connext.validatorsResponseToError(validate.single(sender, isAddress), methodName, 'sender')
-    const updatedPayments = await Promise.all(payments.map( async (payment, index) => {
-      // generate payment
-      let updatedPayment
-      switch(PAYMENT_TYPES[payment.type]) {
-        case PAYMENT_TYPES.LEDGER: // channel update
-          updatedPayment = await this.channelUpdateHandler(payment, sender)
-          break
-        case PAYMENT_TYPES.VIRTUAL: // thread update
-          updatedPayment = await this.threadUpdateHandler(payment, sender)
-          break
-        default:
-          throw new ChannelUpdateError(methodName, `Incorrect channel type specified. Must be CHANNEL or THREAD. Type: ${payment.type}`)
-      }
-      updatedPayment.type = payment.type
-      return updatedPayment
-    }))
-
-    const response = await this.networking.post(
-      `payments/`,
-      {
-        payments: updatedPayments
-      }
-    )
-    return response.data
-  }
-
-  async channelUpdateHandler ({ payment, meta }, sender = null) {
+  async updateChannel ({ channelId, balanceA, balanceB, sender = null }) {
     const methodName = 'channelUpdateHandler'
     const isAddress= { presence: true, isAddress: true }
     const isHexStrict = { presence: true, isHexStrict: true }
     const isValidDepositObject = { presence: true, isValidDepositObject: true }
-    const isValidMeta = { presence: true, isValidMeta: true }
-    const isObj = { presence: true, isObj: true }
 
     if (!sender) {
       const accounts = await this.web3.eth.getAccounts()
       sender = accounts[0]
     }
-    Connext.validatorsResponseToError(validate.single(payment, isObj), methodName, 'payment')
-    const { balanceA, balanceB, channelId } = payment
     // validate inputs
     Connext.validatorsResponseToError(validate.single(sender, isAddress), methodName, 'sender')
     Connext.validatorsResponseToError(
@@ -892,19 +846,13 @@ class Connext {
       methodName,
       'balanceB'
     )
-    // validate meta
-    Connext.validatorsResponseToError(
-      validate.single(meta, isValidMeta),
-      methodName,
-      'meta'
-    )
     const channel = await this.getChannelById(channelId)
     // must exist
     if (!channel) {
       throw new ChannelUpdateError(methodName, 'Channel not found')
     }
-    // must be opened or joined
-    if (CHANNEL_STATES[channel.status] !== 1 && CHANNEL_STATES[channel.status] !== 2) {
+    // must be joined
+    if (CHANNEL_STATES[channel.status] !== CHANNEL_STATES.JOINED) {
       throw new ChannelUpdateError(methodName, 'Channel is in invalid state')
     }
     // must be senders channel
@@ -925,6 +873,7 @@ class Connext {
     const channelWeiBal = Web3.utils.toBN(channel.weiBalanceA).add(Web3.utils.toBN(channel.weiBalanceI))
     const channelTokenBal = Web3.utils.toBN(channel.tokenBalanceA).add(Web3.utils.toBN(channel.tokenBalanceI))
     let proposedWeiBalance, proposedTokenBalance
+
     switch (CHANNEL_TYPES[updateType]) {
       case CHANNEL_TYPES.ETH:
         if (balanceB.weiDeposit.lte(Web3.utils.toBN(channel.weiBalanceI))) {
@@ -963,7 +912,7 @@ class Connext {
     }
 
     // generate signature
-    const sig = await this.createChannelStateUpdate({
+    let state = {
       channelId,
       nonce: channel.nonce + 1,
       numOpenThread: channel.numOpenThread,
@@ -972,21 +921,33 @@ class Connext {
       partyI: channel.partyI,
       balanceA,
       balanceI: balanceB,
-      signer: sender
-    })
-    // return sig
-    const state = {
-      // balanceA: proposedWeiBalance ? balanceA.weiDeposit.toString() : Web3.utils.toBN(channel.weiBalanceA).toString(),
-      // balanceB: proposedWeiBalance ? balanceB.weiDeposit.toString() : Web3.utils.toBN(channel.weiBalanceI).toString(),
-      weiBalanceA: proposedWeiBalance ? balanceA.weiDeposit.toString() : Web3.utils.toBN(channel.weiBalanceA).toString(),
-      weiBalanceB: proposedWeiBalance ? balanceB.weiDeposit.toString() : Web3.utils.toBN(channel.weiBalanceI).toString(),
-      tokenBalanceA: proposedTokenBalance ? balanceA.tokenDeposit.toString() : Web3.utils.toBN(channel.tokenBalanceA).toString(),
-      tokenBalanceB: proposedTokenBalance ? balanceB.tokenDeposit.toString() : Web3.utils.toBN(channel.tokenBalanceI).toString(),
-      channelId: channelId,
-      nonce: channel.nonce + 1,
-      sig,
+      signer: sender,
     }
-    return { payment: state, meta }
+    const sig = await this.createChannelStateUpdate(state)
+    // post to hub
+    const response = await this.networking.post(
+      `channel/${channelId}/update`, 
+      {
+        nonce: state.nonce,
+        weiBalanceA: balanceA.weiDeposit 
+          ? balanceA.weiDeposit.toString() 
+          : '0',
+        weiBalanceI: balanceB.weiDeposit 
+          ? balanceB.weiDeposit.toString() 
+          : '0',
+        tokenBalanceA: balanceA.tokenDeposit 
+          ? balanceA.tokenDeposit.toString() 
+          : '0',
+        tokenBalanceI: balanceB.tokenDeposit 
+          ? balanceB.tokenDeposit.toString() 
+          : '0',
+        threadRootHash: state.threadRootHash,
+        numOpenThread: state.numOpenThread,
+        sigA: sig,
+        sigI: ""
+      }
+    )
+    return response.data
   }
 
   // handle thread state updates from updateBalances
