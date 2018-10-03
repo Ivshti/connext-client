@@ -50,6 +50,9 @@ let chanA, chanB // channel objects
 let threadIdA // thread Ids
 let threadA // thread objects
 
+subchanAI = '0xdf1e7cb0966453cca98fb6c44a10f32ff87cd07cc89880e590553f0824136467'
+subchanBI = '0x0b7831a4b582b746a4461c8066956357f928205e6b340d337ebe9a2f6b6ed8f0'
+
 describe('Connext happy case testing on testnet hub', () => {
   before('init the client', async () => {
     const accounts = await web3.eth.getAccounts()
@@ -65,7 +68,7 @@ describe('Connext happy case testing on testnet hub', () => {
     })
   })
 
-  describe('openChannel', () => {
+  describe.skip('openChannel', () => {
     const initialDeposits = {
       weiDeposit: Web3.utils.toBN(Web3.utils.toWei('6', 'ether'))
     }
@@ -130,15 +133,7 @@ describe('Connext happy case testing on testnet hub', () => {
     })
   })
 
-  describe('requestJoinChannel', () => {
-    subchanAI =
-      subchanAI ||
-      '0x2337e40a02c27c5dc52746de58b747acf0e7d2ae08264ffdc6ad68fee0e6591f'
-
-    subchanBI =
-      subchanBI ||
-      '0xd0cebfc14f7a6846a2ab504c771fb86e56025980c8a45fa6726d0698beb3d3a3'
-
+  describe.skip('requestJoinChannel', () => {
     let hubDeposit
     it('should request that the hub join channel A', async () => {
       hubDeposit = {
@@ -175,11 +170,27 @@ describe('Connext happy case testing on testnet hub', () => {
         weiDeposit: Web3.utils.toBN(Web3.utils.toWei('5', 'ether')),
         tokenDeposit: Web3.utils.toBN('0')
       }
-      const response = await client.requestJoinChannel({
-        hubDeposit,
-        channelId: subchanBI
-      })
-      expect(response).to.exist
+      // const response = await client.requestJoinChannel({
+      //   hubDeposit,
+      //   channelId: subchanBI
+      // })
+      // expect(response).to.exist
+
+      // CALL DIRECTLY ON CONTRACT WHILE HUB DOWN
+      // ChannelManager.deployed().then(i => i.joinChannel( '0x0b7831a4b582b746a4461c8066956357f928205e6b340d337ebe9a2f6b6ed8f0' , ['5000000000000000000', '0'], { from: '0x58E95845A3C2740f4B1B4C639A75aDA64Ef0b72F', value: '5000000000000000000' }))
+
+      const {
+        transactionHash,
+        status
+      } = await client.channelManagerInstance.methods
+        .joinChannel(subchanBI, [
+          hubDeposit.weiDeposit.toString(),
+          hubDeposit.tokenDeposit.toString()
+        ])
+        .send({ from: hubAddress, value: hubDeposit.weiDeposit.toString() })
+      console.log('joinChannel txHash:', transactionHash)
+      expect(transactionHash).to.exist
+      expect(status).to.equal(true)
     })
 
     it('should wait for the hub to join channel B', async () => {
@@ -201,30 +212,28 @@ describe('Connext happy case testing on testnet hub', () => {
     }).timeout(6000)
   })
 
-  describe.skip('updateChannel', () => {
-    // DON'T HAVE THESE CLIENT METHODS YET,
-    // THIS SHOULD LOOK ALMOST IDENTICAL TO UPDATE THREAD FOR WRAPPINGs
+  describe.only('updateChannel', () => {
     it('should send an ETH balance update from client to hub', async () => {
-      // ideally, would take a payment object of the following form
       const balanceA = {
         weiDeposit: Web3.utils.toBN(Web3.utils.toWei('5', 'ether'))
       }
       const balanceB = {
         weiDeposit: Web3.utils.toBN(Web3.utils.toWei('1', 'ether'))
       }
-      const payment = {
-        channelId: threadIdA,
-        balanceA,
-        balanceB
-      }
-      const meta = {
-        receiver: hubAddress, // not used, just needs to be an ETH address. can remove this validation, see line 99 in src
-        type: META_TYPES.UNCATEGORIZED // no validation on fields
-      }
+
+      chanA = await client.getChannelById(subchanAI)
+      console.log('1:chanA:', chanA)
 
       // partyA should be optional sender param that is default null
-      const response = await client.updateChannel(payment, meta, partyA)
-      chanA = await client.getChannelById(threadIdA)
+      const response = await client.updateChannel({
+        channelId: subchanAI,
+        balanceA,
+        balanceB,
+        sender: partyA
+      })
+      console.log('response:', response)
+      chanA = await client.getChannelById(subchanAI)
+      console.log('2:chanA:', chanA)
       expect(
         Web3.utils.toBN(chanA.weiBalanceA).eq(balanceA.weiDeposit)
       ).to.equal(true)
@@ -264,7 +273,7 @@ describe('Connext happy case testing on testnet hub', () => {
   describe.skip('openThread', () => {
     it('should open a thread between partyA and partyB', async () => {
       const initialDeposit = {
-        weiDeposit: Web3.utils.toBN(Web3.utils.toWei('5', 'ether'))
+        weiDeposit: Web3.utils.toBN(Web3.utils.toWei('1', 'ether'))
       }
       chanB = await client.getChannelById(subchanBI)
       chanA = await client.getChannelById(subchanAI)
@@ -299,36 +308,56 @@ describe('Connext happy case testing on testnet hub', () => {
     })
   })
 
-  describe.skip('updateThread', () => {
+  describe('updateThread', () => {
     // DON'T HAVE THESE CLIENT METHODS YET
     it('should send a state update from partyA to partyB', async () => {
-      // ideally, would take a payment object of the following form
-      const balanceA = {
-        weiDeposit: Web3.utils.toBN(Web3.utils.toWei('4', 'ether'))
-      }
-      const balanceB = {
-        weiDeposit: Web3.utils.toBN(Web3.utils.toWei('1', 'ether'))
-      }
-      const payment = {
-        channelId: threadIdA,
-        balanceA,
-        balanceB
-      }
-      const meta = {
-        receiver: partyB, // not used, just needs to be an ETH address. can remove this validation, see line 99 in src
-        type: META_TYPES.UNCATEGORIZED // no validation on fields
-      }
+      console.log(
+        'thread:',
+        await client.getThreadById(
+          '0xe43cc7803a7513b2b7a154ca24dd646fba8ff015029c0356e133524fa94ef1e4'
+        )
+      )
 
-      // partyA should be optional sender param that is default null
-      const response = await client.updateThread(payment, meta, partyA)
-      threadA = await client.getThreadById(threadIdA)
-      expect(
-        Web3.utils.toBN(threadA.weiBalanceA).eq(balanceA.weiDeposit)
-      ).to.equal(true)
-      expect(
-        Web3.utils.toBN(threadA.ethBalanceB).eq(balanceB.weiDeposit)
-      ).to.equal(true)
-      expect(threadA.nonce).to.equal(1)
+      console.log(
+        '\n\nchannelA:',
+        await client.getChannelById(
+          '0x7ec626eb9528582099f006dea0bb1423381d60243cde8ebe9b7240b09f591711'
+        )
+      )
+
+      console.log(
+        '\n\nchannelB:',
+        await client.getChannelById(
+          '0x0cb0d70b30a6d786784e4f3e1abf6f04c819f9ff6a1340edc9f19c37361a31a6'
+        )
+      )
+      // ideally, would take a payment object of the following form
+      // const balanceA = {
+      //   weiDeposit: Web3.utils.toBN(Web3.utils.toWei('4', 'ether'))
+      // }
+      // const balanceB = {
+      //   weiDeposit: Web3.utils.toBN(Web3.utils.toWei('1', 'ether'))
+      // }
+      // const payment = {
+      //   channelId: threadIdA,
+      //   balanceA,
+      //   balanceB
+      // }
+      // const meta = {
+      //   receiver: partyB, // not used, just needs to be an ETH address. can remove this validation, see line 99 in src
+      //   type: META_TYPES.UNCATEGORIZED // no validation on fields
+      // }
+
+      // // partyA should be optional sender param that is default null
+      // const response = await client.updateThread(payment, meta, partyA)
+      // threadA = await client.getThreadById(threadIdA)
+      // expect(
+      //   Web3.utils.toBN(threadA.weiBalanceA).eq(balanceA.weiDeposit)
+      // ).to.equal(true)
+      // expect(
+      //   Web3.utils.toBN(threadA.ethBalanceB).eq(balanceB.weiDeposit)
+      // ).to.equal(true)
+      // expect(threadA.nonce).to.equal(1)
     })
 
     it('partyA should properly sign the proposed update', async () => {

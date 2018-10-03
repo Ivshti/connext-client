@@ -627,6 +627,8 @@ class Connext {
 
     const subchanA = await this.getChannelByPartyA(sender)
     const subchanB = await this.getChannelByPartyA(to)
+    console.log('subchanA:', subchanA)
+    console.log('subchanB:', subchanB)
 
     // validate the subchannels exist
     if (!subchanB || !subchanA) {
@@ -667,12 +669,12 @@ class Connext {
     }
 
     // vc does not already exist
-    let channel = await this.getThreadByParties({ partyA: sender, partyB: to })
-    if (channel) {
+    let thread = await this.getThreadByParties({ partyA: sender, partyB: to })
+    if (thread) {
       throw new ThreadOpenError(
         methodName,
         451,
-        `Parties already have open virtual channel: ${channel.channelId}`
+        `Parties already have open virtual channel: ${thread.channelId}`
       )
     }
 
@@ -690,9 +692,9 @@ class Connext {
     }
 
     // generate initial vcstate
-    const channelId = Connext.getNewChannelId()
+    const threadId = Connext.getNewChannelId()
     const threadInitialState = {
-      channelId,
+      channelId: threadId,
       nonce: 0,
       partyA: sender,
       partyB: to.toLowerCase(),
@@ -704,33 +706,47 @@ class Connext {
       updateType,
       signer: sender
     }
-    const sigVC0 = await this.createThreadStateUpdate(threadInitialState)
-    const sigAtoI = await this.createChannelUpdateOnThreadOpen({
+    console.log('\n\ngenerating threadSig')
+    const threadSig = await this.createThreadStateUpdate(threadInitialState)
+    console.log('\n\ngenerating channelSig')
+    const channelSig = await this.createChannelUpdateOnThreadOpen({
       threadInitialState,
       channel: subchanA,
       signer: sender
     })
 
+    console.log('posting to hub')
     // ingrid should add vc params to db
     let response
     try {
       response = await this.networking.post(`thread/`, {
-        channelId,
+        threadId,
         partyA: sender.toLowerCase(),
         partyB: to.toLowerCase(),
-        ethBalance: deposit.weiDeposit 
+        partyI: subchanA.partyI,
+        subchanA: subchanA.channelId,
+        subchanB: subchanB.channelId,
+        weiBalanceA: deposit.weiDeposit 
           ? deposit.weiDeposit.toString() 
           : '0',
-        tokenBalance: deposit.tokenDeposit 
+        weiBalanceB: '0',
+        tokenBalanceA: deposit.tokenDeposit 
           ? deposit.tokenDeposit.toString() 
           : '0',
-        vcSig: sigVC0,
-        lcSig: sigAtoI
+        weiBond: deposit.weiDeposit 
+          ? deposit.weiDeposit.toString() 
+          : '0',
+        tokenBond: deposit.tokenDeposit 
+          ? deposit.tokenDeposit.toString() 
+          : '0',
+        tokenBalanceB: '0',
+        threadSig,
+        channelSig
       })
     } catch (e) {
       throw new ThreadOpenError(methodName, e.message)
     }
-    return response.data.channelId
+    return response.data.threadId
   }
 
   /**
@@ -2567,11 +2583,6 @@ class Connext {
       weiBond: proposedWeiBalance ? proposedWeiBalance : Web3.utils.toBN('0'),
       tokenBond: proposedTokenBalance ? proposedTokenBalance : Web3.utils.toBN('0')
     }
-    console.log('&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&')
-    console.log('weiBalanceA:', state.weiBalanceA.toString())
-    console.log('weiBalanceB:', state.weiBalanceB.toString())
-    console.log('tokenBalanceA:', state.tokenBalanceA.toString())
-    console.log('tokenBalanceB:', state.tokenBalanceB.toString(), '\n')
 
     console.log('weiBond:', proposedWeiBalance ? proposedWeiBalance.toString() : '0')
     console.log('tokenBond:', proposedTokenBalance ? proposedTokenBalance.toString() : '0')
@@ -3804,7 +3815,7 @@ class Connext {
       const response = await this.networking.get(`thread/${threadId}`)
       return response.data
     } catch (e) {
-      if (e.status === 400) {
+      if (e.status === 404) {
         return null
       } else {
         throw e
@@ -3833,15 +3844,24 @@ class Connext {
       methodName,
       'partyB'
     )
-    const openResponse = await this.networking.get(
-      `thread/a/${partyA.toLowerCase()}/b/${partyB.toLowerCase()}`
-    )
-    if (openResponse.data && openResponse.data.length === 0) {
-      return null
-    } else if (openResponse.data && openResponse.data.length === 1){
-      return openResponse.data[0]
-    } else {
-      return openResponse.data
+    try {
+      const openResponse = await this.networking
+        .get(
+        `thread/a/${partyA.toLowerCase()}/b/${partyB.toLowerCase()}`
+        )
+      if (openResponse.data && openResponse.data.length === 0) {
+        return null
+      } else if (openResponse.data && openResponse.data.length === 1){
+        return openResponse.data[0]
+      } else {
+        return openResponse.data
+      }
+    } catch (e) {
+      if (e.status === 404) {
+        return null
+      } else {
+        throw e
+      }
     }
   }
 
