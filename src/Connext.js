@@ -342,7 +342,11 @@ class Connext {
    * @param {String} sender - (optional) counterparty with hub in ledger channel, defaults to accounts[0]
    * @returns {Promise} resolves to the ledger channel id of the created channel
    */
-  async openChannel (initialDeposits, challenge, tokenAddress = null, sender = null) {
+  async openChannel ({
+    initialDeposits, 
+    challenge, 
+    tokenAddress = null, 
+    sender = null}) {
     // validate params
     const methodName = 'openChannel'
     const isValidDepositObject = { presence: true, isValidDepositObject: true }
@@ -391,7 +395,6 @@ class Connext {
     }
     // verify channel does not exist between ingrid and sender
     let channel = await this.getChannelByPartyA(sender)
-    console.log('channel:', channel)
     if (channel != null && CHANNEL_STATES[channel.status] === CHANNEL_STATES.JOINED) {
       throw new ChannelOpenError(
         methodName,
@@ -420,6 +423,38 @@ class Connext {
 
     return channelId
   }
+
+  async requestJoinChannel({ hubDeposit, channelId }) {
+    const methodName = 'requestJoinChannel'
+    const isHex = { presence: true, isHex: true }
+    const isValidDepositObject = { presence: true, isValidDepositObject: true }
+    Connext.validatorsResponseToError(
+      validate.single(hubDeposit, isValidDepositObject),
+      methodName,
+      'hubDeposit'
+    )
+    Connext.validatorsResponseToError(
+      validate.single(channelId, isHex),
+      methodName,
+      'channelId'
+    )
+
+    const { weiDeposit, tokenDeposit } = hubDeposit
+    // post to hub join endpoint with same params
+    try {
+      const response = await this.networking.post(`channel/join`, 
+        {
+          weiBalanceI: weiDeposit ? weiDeposit.toString() : '0',
+          tokenBalanceI: tokenDeposit ? tokenDeposit.toString() : '0',
+          channelId
+        })
+      return response.data
+    } catch (e) {
+      console.log(e.message)
+      throw new ChannelOpenError(methodName, `Error joining channel.`)
+    }
+  }
+
 
   /**
    * Adds a deposit to an existing ledger channel by calling the contract function "deposit" using the internal web3 instance.
@@ -3906,17 +3941,24 @@ class Connext {
       const accounts = await this.web3.eth.getAccounts()
       partyA = accounts[0]
     }
-
-    const response = await this.networking.get(
-      `channel/a/${partyA.toLowerCase()}`
-    )
-    if (response.data && response.data.length === 0) {
-      return null
-    } else if (response.data.length === 1) {
-      return response.data[0]
-    } else {
-      return response.data
+    try {
+      const response = await this.networking.get(
+        `channel/a/${partyA.toLowerCase()}`)
+      if (response.data && response.data.length === 0) {
+        return null
+      } else if (response.data.length === 1) {
+        return response.data[0]
+      } else {
+        return response.data
+      }
+    } catch (e) {
+      if (e.status === 404) {
+        return null
+      } else {
+        throw e
+      }
     }
+    
   }
 
   async getLatestThreadState (channelId) {
