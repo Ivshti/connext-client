@@ -1304,7 +1304,7 @@ class Connext {
       sender = accounts[0].toLowerCase();
     }
 
-    // get latest state in vc
+    // get latest state in thread
     const thread = await this.getThreadById(threadId);
     if (!thread) {
       throw new ThreadCloseError(methodName, "Thread not found");
@@ -1345,18 +1345,16 @@ class Connext {
     latestThreadState.channelId = threadId;
     latestThreadState.partyA = thread.partyA;
     latestThreadState.partyB = thread.partyB;
-    // get partyA ledger channel
+    // get partyA channel
     const subchan = await this.getChannelByPartyA(sender);
-    // generate decomposed lc update
-    console.log("generating channel update..");
+    // generate decomposed channel update
     const sigAtoI = await this.createChannelUpdateOnThreadClose({
       latestThreadState,
       subchan,
       signer: sender.toLowerCase()
     });
 
-    console.log("generated. requesting hub close..");
-    // request ingrid closes vc with this update
+    // request ingrid closes thread with this update
     const fastCloseSig = await this.fastCloseThreadHandler({
       sig: sigAtoI,
       signer: sender.toLowerCase(),
@@ -4042,7 +4040,7 @@ class Connext {
       "nonce"
     );
     const response = await this.networking.get(
-      `virtualchannel/${channelId}/update/nonce/${nonce}`
+      `virtualchannel/${channelId}/update/${nonce}`
     );
     return response.data;
   }
@@ -4062,7 +4060,7 @@ class Connext {
       "nonce"
     );
     const response = await this.networking.get(
-      `channel/${channelId}/update/nonce/${nonce}`
+      `channel/${channelId}/update/${nonce}`
     );
     return response.data;
   }
@@ -4461,11 +4459,10 @@ class Connext {
       sig,
       signer
     });
-    if (response.data.sigI) {
-      return response.data.sigI;
-    } else {
-      return false;
-    }
+    return (
+      THREAD_STATES[response.data.status] !==
+      Object.keys(THREAD_STATES)[THREAD_STATES.SETTLED]
+    );
   }
 
   async fastCloseChannelHandler({ sig, channelId }) {
