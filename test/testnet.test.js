@@ -50,11 +50,11 @@ let chanA, chanB; // channel objects
 let threadIdA; // thread Ids
 let threadA; // thread objects
 
-// for interrupted testing
-subchanAI =
-  "0x1eb482101155b3a9de17ff8a97c5b2b296e8527b77d5689db4535af1d849ae60";
-subchanBI =
-  "0x5ed05cf4d8c605358f8bd83fa4028b2ccb9c14b5a48a4c0c4971dbd2eebf4631";
+// // for interrupted testing
+// subchanAI =
+//   "0xf28a32afad68487a8cb494ba08b7908680ca2c786493483170b76d002dbc7dbf";
+// subchanBI =
+//   "0x6338a051b2b7ca5630a2f7d3dc30da1a4dbeb5b8bc5afd011e8c08084b17730d";
 // threadIdA =
 //   "0x44c2defb7ed4907d302e7aea9221abd153df82efeed00857237774b0db115165";
 
@@ -73,7 +73,7 @@ describe("Connext happy case testing on testnet hub", () => {
     });
   });
 
-  describe.skip("openChannel", () => {
+  describe("openChannel", () => {
     const initialDeposits = {
       weiDeposit: Web3.utils.toBN(Web3.utils.toWei("6", "ether"))
     };
@@ -138,7 +138,7 @@ describe("Connext happy case testing on testnet hub", () => {
     });
   });
 
-  describe.skip("requestJoinChannel", () => {
+  describe("requestJoinChannel", () => {
     let hubDeposit;
     it("should request that the hub join channel A", async () => {
       hubDeposit = {
@@ -175,27 +175,14 @@ describe("Connext happy case testing on testnet hub", () => {
         weiDeposit: Web3.utils.toBN(Web3.utils.toWei("5", "ether")),
         tokenDeposit: Web3.utils.toBN("0")
       };
-      // const response = await client.requestJoinChannel({
-      //   hubDeposit,
-      //   channelId: subchanBI
-      // })
-      // expect(response).to.exist
+      const response = await client.requestJoinChannel({
+        hubDeposit,
+        channelId: subchanBI
+      });
+      expect(response).to.exist;
 
       // CALL DIRECTLY ON CONTRACT WHILE HUB DOWN
       // ChannelManager.deployed().then(i => i.joinChannel( '0x5ed05cf4d8c605358f8bd83fa4028b2ccb9c14b5a48a4c0c4971dbd2eebf4631' , ['5000000000000000000', '0'], { from: '0x58E95845A3C2740f4B1B4C639A75aDA64Ef0b72F', value: '5000000000000000000' }))
-
-      const {
-        transactionHash,
-        status
-      } = await client.channelManagerInstance.methods
-        .joinChannel(subchanBI, [
-          hubDeposit.weiDeposit.toString(),
-          hubDeposit.tokenDeposit.toString()
-        ])
-        .send({ from: hubAddress, value: hubDeposit.weiDeposit.toString() });
-      console.log("joinChannel txHash:", transactionHash);
-      expect(transactionHash).to.exist;
-      expect(status).to.equal(true);
     });
 
     it("should wait for the hub to join channel B", async () => {
@@ -217,7 +204,7 @@ describe("Connext happy case testing on testnet hub", () => {
     }).timeout(6000);
   });
 
-  describe.skip("updateChannel", () => {
+  describe("updateChannel", () => {
     it("should send an ETH balance update from client to hub", async () => {
       const balanceA = {
         weiDeposit: Web3.utils.toBN(Web3.utils.toWei("5", "ether"))
@@ -246,7 +233,7 @@ describe("Connext happy case testing on testnet hub", () => {
     });
   });
 
-  describe.skip("openThread", () => {
+  describe("openThread", () => {
     const initialDeposit = {
       weiDeposit: Web3.utils.toBN(Web3.utils.toWei("1", "ether"))
     };
@@ -285,7 +272,7 @@ describe("Connext happy case testing on testnet hub", () => {
     });
   });
 
-  describe.skip("updateThread", () => {
+  describe("updateThread", () => {
     // DON'T HAVE THESE CLIENT METHODS YET
     it("should send a state update from partyA to partyB", async () => {
       // ideally, would take a payment object of the following form
@@ -367,10 +354,10 @@ describe("Connext happy case testing on testnet hub", () => {
     });
   });
 
-  describe.skip("closeThread", () => {
+  describe("closeThread", () => {
     it("should close the thread between A and B", async () => {
       threadA = await client.getThreadByParties({ partyA, partyB });
-      // const response = await client.closeThread(threadA.threadId, partyA);
+      const response = await client.closeThread(threadA.threadId, partyA);
       // get threadA
       threadA = await client.getThreadById(threadA.threadId);
       expect(THREAD_STATES[threadA.status]).to.equal(THREAD_STATES.SETTLED);
@@ -447,7 +434,7 @@ describe("Connext happy case testing on testnet hub", () => {
       const tx = await client.web3.eth.getTransaction(response);
       expect(tx.to.toLowerCase()).to.equal(contractAddress);
       expect(tx.from.toLowerCase()).to.equal(partyA.toLowerCase());
-    }).timeout(8000);
+    }).timeout(45000);
 
     it("should increase partyA wallet balance by channel balanceA", async () => {
       chanA = await client.getChannelByPartyA(partyA);
@@ -475,17 +462,19 @@ describe("Connext happy case testing on testnet hub", () => {
     });
 
     it("should close the channel between partyB and the hub", async () => {
-      prevBalA = await client.web3.eth.getBalance(partyA);
+      prevBalA = await client.web3.eth.getBalance(partyB);
       prevBalI = await client.web3.eth.getBalance(hubAddress);
       // send tx
-      const response = await client.closeChannel(partyA);
+      chanB = await client.getChannelByPartyA(partyB);
+      const response = await client.closeChannel(partyB);
       const tx = await client.web3.eth.getTransaction(response);
       expect(tx.to.toLowerCase()).to.equal(contractAddress);
-      expect(tx.from.toLowerCase()).to.equal(partyA.toLowerCase());
-    });
+      expect(tx.from.toLowerCase()).to.equal(partyB.toLowerCase());
+    }).timeout(45000);
 
-    it("should increase partyA wallet balance by channel balanceA", async () => {
+    it("should increase partyB wallet balance by channel balanceA", async () => {
       chanB = await client.getChannelByPartyA(partyB);
+      expect(CHANNEL_STATES[chanB.status] === CHANNEL_STATES.SETTLED);
       const expected = Web3.utils.fromWei(
         Web3.utils.toBN(chanB.weiBalanceA).add(Web3.utils.toBN(prevBalA)),
         "ether"
@@ -497,7 +486,7 @@ describe("Connext happy case testing on testnet hub", () => {
       expect(Math.round(expected)).to.equal(Math.round(finalBalA));
     });
 
-    it("should increase hub wallet balance by channel balanceB", async () => {
+    it("should increase hub wallet balance by channel balanceI", async () => {
       const expected = Web3.utils.fromWei(
         Web3.utils.toBN(chanB.weiBalanceI).add(Web3.utils.toBN(prevBalI)),
         "ether"

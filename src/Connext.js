@@ -1489,7 +1489,7 @@ class Connext {
       // i-signed?
       const signer = Connext.recoverSignerFromChannelStateUpdate({
         sig: channelState.sigI,
-        isClose: channelState.isClose,
+        isClose: false,
         channelId: channel.channelId,
         nonce: channelState.nonce,
         numOpenThread: channelState.numOpenThread,
