@@ -834,95 +834,6 @@ class Connext {
     return threadId;
   }
 
-  /**
-   * Joins virtual channel with provided channelId with a deposit of 0 (unidirectional channels).
-   *
-   * This function is to be called by the "B" party in a unidirectional scheme.
-   *
-   * @example
-   * const channelId = 10 // pushed to partyB from Ingrid
-   * await connext.joinThread(channelId)
-   * @param {String} channelId - ID of the virtual channel
-   * @param {String} sender - (optional) ETH address of the person joining the virtual channel (partyB)
-   * @returns {Promise} resolves to the virtual channel ID
-   */
-  async joinThread(threadId, sender = null) {
-    // validate params
-    const methodName = "joinThread";
-    const isHexStrict = { presence: true, isHexStrict: true };
-    const isAddress = { presence: true, isAddress: true };
-    Connext.threadId(
-      validate.single(channelId, isHexStrict),
-      methodName,
-      "threadId"
-    );
-    const thread = await this.getThreadById(threadId);
-    if (thread === null) {
-      throw new ThreadOpenError(methodName, "Channel not found");
-    }
-    const accounts = await this.web3.eth.getAccounts();
-    if (sender) {
-      Connext.validatorsResponseToError(
-        validate.single(sender, isAddress),
-        methodName,
-        "sender"
-      );
-    } else {
-      sender = accounts[0];
-    }
-
-    if (sender.toLowerCase() !== thread.partyB) {
-      throw new ThreadOpenError(methodName, "Incorrect channel counterparty");
-    }
-
-    // get channels
-    const subchanA = await this.getChannelByPartyA(thread.partyA);
-    const subchanB = await this.getChannelByPartyA(sender);
-    if (subchanB === null || subchanA === null) {
-      throw new ThreadOpenError(
-        methodName,
-        "Missing one or more required subchannels"
-      );
-    }
-
-    // subchannels in right state
-    if (
-      CHANNEL_STATES[subchanB.state] !== CHANNEL_STATES.LCS_OPENED ||
-      CHANNEL_STATES[subchanA.state] !== CHANNEL_STATES.LCS_OPENED
-    ) {
-      throw new ThreadOpenError(
-        methodName,
-        "One or more required subchannels are in the incorrect state"
-      );
-    }
-
-    const thread0 = {
-      channelId,
-      nonce: 0,
-      partyA: thread.partyA, // depending on ingrid for this value
-      partyB: sender,
-      weiBalanceA: Web3.utils.toBN(thread.weiBalanceA), // depending on ingrid for this value
-      weiBalanceB: Web3.utils.toBN(0),
-      tokenBalanceA: Web3.utils.toBN(thread.tokenBalanceA),
-      tokenBalanceB: Web3.utils.toBN(0),
-      signer: sender
-    };
-    const threadSig = await this.createThreadStateUpdate(thread0);
-    // generate lcSig
-    const subchanSig = await this.createChannelUpdateOnThreadOpen({
-      threadInitialState: thread0,
-      channel: subchanB,
-      signer: sender
-    });
-    // ping ingrid with vc0 (hub decomposes to lc)
-    const result = await this.joinThreadHandler({
-      threadSig,
-      subchanSig,
-      channelId
-    });
-    return result;
-  }
-
   async updateChannel({ channelId, balanceA, balanceB, sender = null }) {
     const methodName = "channelUpdateHandler";
     const isAddress = { presence: true, isAddress: true };
@@ -4331,24 +4242,7 @@ class Connext {
       methodName,
       "threadId"
     );
-    const response = await this.networking.get(
-      `virtualchannel/${threadId}/update/nonce/0`
-    );
-    return response.data;
-  }
-
-  async getDecomposedChannelStates(threadId) {
-    // validate params
-    const methodName = "getDecomposedChannelStates";
-    const isHexStrict = { presence: true, isHexStrict: true };
-    Connext.validatorsResponseToError(
-      validate.single(threadId, isHexStrict),
-      methodName,
-      "threadId"
-    );
-    const response = await this.networking.get(
-      `virtualchannel/${threadId}/decompose`
-    );
+    const response = await this.networking.get(`thread/${threadId}/update/0`);
     return response.data;
   }
 
@@ -4401,38 +4295,6 @@ class Connext {
       }
     );
     return response.data.txHash;
-  }
-
-  // ingrid verifies the threadInitialStates and sets up vc and countersigns lc updates
-  async joinThreadHandler({ subchanSig, threadSig, channelId }) {
-    // validate params
-    const methodName = "joinThreadHandler";
-    const isHexStrict = { presence: true, isHexStrict: true };
-    const isHex = { presence: true, isHex: true };
-    Connext.validatorsResponseToError(
-      validate.single(threadSig, isHex),
-      methodName,
-      "threadSig"
-    );
-    Connext.validatorsResponseToError(
-      validate.single(subchanSig, isHex),
-      methodName,
-      "subchanSig"
-    );
-    Connext.validatorsResponseToError(
-      validate.single(channelId, isHexStrict),
-      methodName,
-      "channelId"
-    );
-    // ingrid should verify vcS0A and vcS0b
-    const response = await this.networking.post(
-      `virtualchannel/${channelId}/join`,
-      {
-        vcSig: threadSig,
-        lcSig: subchanSig
-      }
-    );
-    return response.data.channelId;
   }
 
   async fastCloseThreadHandler({ sig, signer, channelId }) {
