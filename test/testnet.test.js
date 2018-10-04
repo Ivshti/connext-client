@@ -367,14 +367,13 @@ describe("Connext happy case testing on testnet hub", () => {
     });
   });
 
-  describe("closeThread", () => {
+  describe.skip("closeThread", () => {
     it("should close the thread between A and B", async () => {
       threadA = await client.getThreadByParties({ partyA, partyB });
-      const response = await client.closeThread(threadA.threadId, partyA);
-      console.log(response);
+      // const response = await client.closeThread(threadA.threadId, partyA);
       // get threadA
       threadA = await client.getThreadById(threadA.threadId);
-      expect(threadA.state).to.equal(THREAD_STATES.SETTLED);
+      expect(THREAD_STATES[threadA.status]).to.equal(THREAD_STATES.SETTLED);
     });
 
     it("should increase partyA channel balance by remainder of thread balanceA", async () => {
@@ -437,7 +436,7 @@ describe("Connext happy case testing on testnet hub", () => {
     });
   });
 
-  describe.skip("closeChannel", () => {
+  describe("closeChannel", () => {
     let prevBalA, finalBalA, prevBalI, finalBalI;
 
     it("should close the channel between partyA and the hub", async () => {

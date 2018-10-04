@@ -1466,6 +1466,7 @@ class Connext {
 
     // get latest i-signed lc state update
     let channelState = await this.getLatestChannelState(channel.channelId);
+    console.log("closing with state:", channelState);
     if (channelState) {
       // numOpenThread?
       if (Number(channelState.numOpenThread) !== 0) {
@@ -1484,6 +1485,7 @@ class Connext {
           "Cannot close channel with open VCs"
         );
       }
+
       // i-signed?
       const signer = Connext.recoverSignerFromChannelStateUpdate({
         sig: channelState.sigI,
