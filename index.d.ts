@@ -106,7 +106,7 @@ declare namespace Connext {
     partyA: string;
     partyB: string;
     weiBalanceA: BN;
-    ethBalanceB: BN;
+    weiBalanceB: BN;
     tokenBalanceA: BN;
     tokenBalanceB: BN;
     weiBond: BN;
