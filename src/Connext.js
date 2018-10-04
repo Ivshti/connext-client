@@ -345,10 +345,9 @@ class Connext {
    * const connext = new Connext(web3)
    * @param {Object} params - the constructor object
    * @param {Web3} params.web3 - the web3 instance
-   * @param {String} params.hubAddress - ETH address of intermediary (defaults to Connext hub)
-   * @param {String} params.watcherUrl - url of watcher server (defaults to Connext hub)
-   * @param {String} params.hubUrl - url of intermediary server (defaults to Connext hub)
-   * @param {String} params.contractAddress - address of deployed contract (defaults to latest deployed contract)
+   * @param {String} params.hubAddress - ETH address of the hub
+   * @param {String} params.hubUrl - url of hub server
+   * @param {String} params.contractAddress - address of deployed ChannelManager contract
    * @param {String} params.hubAuth - token authorizing client package to make requests to hub
    */
   constructor(
