@@ -17,15 +17,17 @@ declare class Connext {
 
   joinThread(channelId: string): Promise<any>;
 
-  updateBalance(opts: Connext.UpdateBalanceOptions): Promise<any>;
+  updateChannel(opts: Connext.UpdateChannelOptions): Promise<any>;
+
+  updateThread(opts: Connext.UpdateThreadOptions): Promise<any>;
 
   cosignBalanceUpdate(
     opts: Connext.CosignBalanceUpdateOptions
   ): Promise<string>;
 
-  closeThread(channelId: string): Promise<any>;
+  closeThread(threadId: string): Promise<any>;
 
-  closeThreads(channels: string[]): Promise<any>;
+  closeThreads(threadIds: string[]): Promise<any>;
 
   static createChannelStateUpdateFingerprint(
     opts: Connext.FingerprintChannelUpdate
@@ -71,8 +73,14 @@ declare namespace Connext {
     deposit: BalanceOptions;
   }
 
-  export interface UpdateBalanceOptions {
+  export interface UpdateChannelOptions {
     channelId: string;
+    balanceA: BalanceOptions;
+    balanceB: BalanceOptions;
+  }
+
+  export interface UpdateThreadOptions {
+    threadId: string;
     balanceA: BalanceOptions;
     balanceB: BalanceOptions;
   }

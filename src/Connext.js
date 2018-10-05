@@ -147,7 +147,7 @@ validate.validators.isValidMeta = value => {
 };
 
 validate.validators.isChannelStatus = value => {
-  if (CHANNEL_STATES[value] === -1) {
+  if (CHANNEL_STATES[value] === null) {
     return null;
   } else {
     return `${value} is not a valid lc state`;
@@ -272,7 +272,7 @@ validate.validators.isThreadState = value => {
 };
 
 validate.validators.isChannelObj = value => {
-  if (CHANNEL_STATES[value.state] === -1) {
+  if (CHANNEL_STATES[value.status] === null) {
     return `Channel object does not contain valid state: ${JSON.stringify(
       value
     )}`;
@@ -1124,7 +1124,7 @@ class Connext {
       throw new ThreadUpdateError(methodName, "Thread not found");
     }
     // channel must be opening or opened
-    if (THREAD_STATES[thread.state] === 3) {
+    if (THREAD_STATES[thread.status] === 3) {
       throw new ThreadUpdateError(methodName, "Thread is in invalid state");
     }
     if (sender.toLowerCase() !== thread.partyA.toLowerCase()) {
@@ -2770,7 +2770,7 @@ class Connext {
       }
     } else {
       // thread exists
-      if (THREAD_STATES[thread.state] === 3) {
+      if (THREAD_STATES[thread.status] === 3) {
         throw new ThreadUpdateError(methodName, "Thread is in invalid state");
       }
       if (nonce < thread.nonce + 1 && nonce !== 0) {
@@ -3615,7 +3615,7 @@ class Connext {
       throw new ChannelOpenError(methodName, "Incorrect channel counterparty");
     }
 
-    if (CHANNEL_STATES[channel.state] !== CHANNEL_STATES.OPENED) {
+    if (CHANNEL_STATES[channel.status] !== CHANNEL_STATES.OPENED) {
       throw new ChannelOpenError(methodName, "Channel is not in correct state");
     }
     const result = await this.channelManagerInstance.methods
@@ -4917,8 +4917,8 @@ class Connext {
       throw new ThreadCloseError(methodName, "Not your channel");
     }
     if (
-      CHANNEL_STATES[subchan.state] !== CHANNEL_STATES.LCS_OPENED &&
-      CHANNEL_STATES[subchan.state] !== CHANNEL_STATES.LCS_SETTLING
+      CHANNEL_STATES[subchan.status] !== CHANNEL_STATES.JOINED &&
+      CHANNEL_STATES[subchan.status] !== CHANNEL_STATES.SETTLING
     ) {
       throw new ThreadCloseError(methodName, "Channel is in invalid state");
     }
