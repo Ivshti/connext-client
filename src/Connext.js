@@ -337,12 +337,12 @@ validate.validators.isChannelObj = value => {
 class Connext {
   /**
    *
-   * Create an instance of the Connext client.
+   * Create an instance of the Connext client. You'll have to pass in a param object.
    *
    * @constructor
    * @example
    * const Connext = require('connext')
-   * const connext = new Connext(web3)
+   * const connext = new Connext(params)
    * @param {Object} params - the constructor object
    * @param {Web3} params.web3 - the web3 instance
    * @param {String} params.hubAddress - ETH address of the hub
