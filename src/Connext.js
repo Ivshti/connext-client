@@ -4400,7 +4400,7 @@ class Connext {
    * @param {String} params.partyB - ETH address of partyB in virtual channel
    * @returns {Promise} resolves to the thread
    */
-  async getThreadByParties({ partyA, partyB }) {
+  async getThreadByParties({ partyA, partyB, status = null }) {
     const methodName = "getThreadByParties";
     const isAddress = { presence: true, isAddress: true };
     Connext.validatorsResponseToError(
@@ -4413,17 +4413,14 @@ class Connext {
       methodName,
       "partyB"
     );
+    if (!status) {
+      status = THREAD_STATES.OPENED;
+    }
+    let response;
     try {
-      const openResponse = await this.networking.get(
+      response = await this.networking.get(
         `thread/a/${partyA.toLowerCase()}/b/${partyB.toLowerCase()}`
       );
-      if (openResponse.data && openResponse.data.length === 0) {
-        return null;
-      } else if (openResponse.data && openResponse.data.length === 1) {
-        return openResponse.data[0];
-      } else {
-        return openResponse.data;
-      }
     } catch (e) {
       if (e.status === 404) {
         return null;
@@ -4431,6 +4428,9 @@ class Connext {
         throw e;
       }
     }
+
+    const threads = response.data.filter(val => val.status === status)
+    return threads
   }
 
   /**
