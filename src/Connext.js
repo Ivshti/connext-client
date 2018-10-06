@@ -4246,8 +4246,16 @@ class Connext {
       partyB = accounts[0].toLowerCase();
     }
     const response = await this.networking.get(
-      `virtualchannel/address/${partyB.toLowerCase()}/opening`
+      `thread/address/${partyB.toLowerCase()}/opening`
     );
+    return response.data;
+  }
+
+  /**
+   * Returns all open channels with the hub.
+   */
+  async getAllChannels() {
+    const response = await this.networking.get(`channel/`);
     return response.data;
   }
 
