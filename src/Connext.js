@@ -4429,8 +4429,12 @@ class Connext {
       }
     }
 
-    const threads = response.data.filter(val => val.status === status)
-    return threads
+    const threads = response.data.filter(val => val.status === status);
+    if (status === THREAD_STATES.OPENED) {
+      return threads[0];
+    } else {
+      return threads;
+    }
   }
 
   /**
