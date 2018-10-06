@@ -2936,6 +2936,12 @@ class Connext {
       // reset to initial value -- no open VCs
       threadRootHash = emptyRootHash;
     } else {
+      threadInitialStates = threadInitialStates.map(threadInitialState => {
+        if (!threadInitialState.channelId) {
+          threadInitialState.channelId = threadInitialState.threadId;
+          return threadInitialState;
+        }
+      });
       const merkle = Connext.generateMerkleTree(threadInitialStates);
       threadRootHash = Utils.bufferToHex(merkle.getRoot());
     }
