@@ -1333,6 +1333,7 @@ class Connext {
       );
     }
 
+    latestThreadState.threadId = threadId;
     latestThreadState.channelId = threadId;
     latestThreadState.partyA = thread.partyA;
     latestThreadState.partyB = thread.partyB;
@@ -4943,8 +4944,9 @@ class Connext {
     // array of state objects, which include the channel id and nonce
     // remove initial state of vcN
     threadInitialStates = threadInitialStates.filter(threadState => {
-      return threadState.channelId !== latestThreadState.channelId;
+      return threadState.threadId !== latestThreadState.threadId;
     });
+
     const newRootHash = Connext.generateThreadRootHash({
       threadInitialStates: threadInitialStates
     });
