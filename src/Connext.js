@@ -831,7 +831,7 @@ class Connext {
     const threadSig = await this.createThreadStateUpdate(threadInitialState);
     const channelSig = await this.createChannelUpdateOnThreadOpen({
       threadInitialState,
-      channel: subchanA,
+      subchan: subchanA,
       signer: sender
     });
 
