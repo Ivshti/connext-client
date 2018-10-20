@@ -41,6 +41,7 @@ Functions which generate state that is ready to be submitted onchain for any cas
 //split by thread vs channel updates?
 
 //state schema:
+
        ```
        bytes32 state = keccak256(
             abi.encodePacked(
@@ -58,7 +59,8 @@ Functions which generate state that is ready to be submitted onchain for any cas
                 threadCount,
                 timeout
             )
-        );```
+        );
+```
 
 #### channel updates
 - deposit 
@@ -73,3 +75,4 @@ Functions which generate state that is ready to be submitted onchain for any cas
 Do everything related to a specific common flow like deposit/withdraw/deposit with exchange
 
 ## Validators
+//TODO
