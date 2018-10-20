@@ -41,8 +41,7 @@ Functions which generate state that is ready to be submitted onchain for any cas
 //split by thread vs channel updates?
 
 //state schema:
-
-       ```
+```
        bytes32 state = keccak256(
             abi.encodePacked(
                 address(this),
