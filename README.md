@@ -42,23 +42,23 @@ Functions which generate state that is ready to be submitted onchain for any cas
 
 //state schema:
 ```
-       bytes32 state = keccak256(
-            abi.encodePacked(
-                address(this),
-                user,
-                recipient,
-                weiBalances, // [hub, user]
-                tokenBalances, // [hub, user]
-                pendingWeiDeposits, // [hub, user]
-                pendingTokenDeposits, // [hub, user]
-                pendingWeiWithdrawals, // [hub, user]
-                pendingTokenWithdrawals, // [hub, user]
-                txCount, // persisted onchain even when empty
-                threadRoot,
-                threadCount,
-                timeout
-            )
-        );
+bytes32 state = keccak256(
+     abi.encodePacked(
+         address(this),
+         user,
+         recipient,
+         weiBalances, // [hub, user]
+         tokenBalances, // [hub, user]
+         pendingWeiDeposits, // [hub, user]
+         pendingTokenDeposits, // [hub, user]
+         pendingWeiWithdrawals, // [hub, user]
+         pendingTokenWithdrawals, // [hub, user]
+         txCount, // persisted onchain even when empty
+         threadRoot,
+         threadCount,
+         timeout
+     )
+ );
 ```
 
 #### channel updates
