@@ -8,9 +8,7 @@ Primary changes to client include:
 - Exposing validation functions publicly
 - Exposing utility functions publicly (signing, hash prep)
 
-## Publicly exposed functions
-
-### Basic Contract handlers
+## Basic Contract handlers
 Contract-wrapping functions which validate inputs prior to submitting onchain
 Functions currently on the contract:
 - hubAuthorizedUpdate
@@ -25,7 +23,7 @@ Functions currently on the contract:
 - recipientEmptyThreads
 - nukeThreads
 
-### Utils
+## Utils
 Convenience functions which help users deal with states, signing and hashes
 //what do we need here? TODO go through Hub/client/wallet and look for overlaps
 - createChannelStateUpdateFingerprint (internal? Should definitely be called by other utils/wrappers)
@@ -37,7 +35,7 @@ Convenience functions which help users deal with states, signing and hashes
 - generateThreadRootHash
 - generateMerkleTree
 
-### State Generators
+## State Generators
 Functions which generate state that is ready to be submitted onchain for any case
 //can we do this with a switch and just one generateSwitch() method?
 //split by thread vs channel updates?
@@ -71,5 +69,7 @@ Functions which generate state that is ready to be submitted onchain for any cas
 - update
 - close/withdraw
 
-### Top level wrappers
+## Top level wrappers
 Do everything related to a specific common flow like deposit/withdraw/deposit with exchange
+
+## Validators
