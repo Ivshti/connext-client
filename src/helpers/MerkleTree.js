@@ -72,7 +72,7 @@ export default class MerkleTree {
   }
 
   verify (proof, element) {
-    return this.root.equals(
+    return this.getRoot().equals(
       proof.reduce((hash, pair) => combinedHash(hash, pair), element)
     )
   }
